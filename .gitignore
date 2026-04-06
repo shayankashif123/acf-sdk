@@ -210,7 +210,6 @@ __marimo__/
 
 # Go
 bin/
-sidecar/go.sum
 
 # Config (contains no secrets but keep local overrides out of the repo)
 config/sidecar.yaml
