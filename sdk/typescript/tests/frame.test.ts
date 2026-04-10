@@ -45,6 +45,13 @@ describe("canonicalPayload", () => {
             CanonicaliseError,
         )
     })
+
+    it("CanonicaliseError is caught as FrameError", () => {
+        assert.throws(
+            () => canonicalPayload(Buffer.from("{not-json")),
+            FrameError,
+        )
+    })
 })
 
 describe("signedMessage", () => {
@@ -54,6 +61,33 @@ describe("signedMessage", () => {
         const m1 = signedMessage(VERSION, p1.length, FIXED_NONCE, p1)
         const m2 = signedMessage(VERSION, p2.length, FIXED_NONCE, p2)
         assert.deepStrictEqual(m1, m2)
+    })
+
+    it("throws FrameError when nonce is wrong length", () => {
+        assert.throws(
+            () => signedMessage(VERSION, 0, Buffer.alloc(8), Buffer.alloc(0)),
+            FrameError,
+        )
+    })
+
+    it("produces identical HMAC for equivalent payload key orders — core cross-SDK guarantee", () => {
+        const pythonStyle = Buffer.from('{"hook_type":"on_prompt","score":0.0,"payload":"hello"}')
+        const typescriptStyle = Buffer.from('{"payload":"hello","score":0.0,"hook_type":"on_prompt"}')
+
+        const canon1 = canonicalPayload(pythonStyle)
+        const canon2 = canonicalPayload(typescriptStyle)
+
+        const msg1 = signedMessage(VERSION, canon1.length, FIXED_NONCE, canon1)
+        const msg2 = signedMessage(VERSION, canon2.length, FIXED_NONCE, canon2)
+
+        const hmac1 = createHmac("sha256", TEST_KEY).update(msg1).digest()
+        const hmac2 = createHmac("sha256", TEST_KEY).update(msg2).digest()
+
+        assert.deepStrictEqual(
+            hmac1,
+            hmac2,
+            "HMAC mismatch for semantically identical JSON with different key order",
+        )
     })
 })
 
